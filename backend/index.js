@@ -6,6 +6,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
+import crypto from 'node:crypto'
 
 dotenv.config()
 
@@ -15,11 +16,14 @@ const dataDir = path.join(__dirname, 'data')
 const submissionsPath = path.join(dataDir, 'contact-submissions.json')
 
 const app = express()
+
+app.use((req, res, next) => {
+  console.error('Incoming request headers:', req.headers)
+  next()
+})
+
 const port = Number(process.env.PORT || 3001)
 const ownerEmail = process.env.OWNER_EMAIL || 'munithin177@gmail.com'
-const allowedOrigins = new Set(
-  [process.env.CLIENT_ORIGIN || 'http://localhost:5173', 'http://localhost:3001'].filter(Boolean),
-)
 
 const submissionSchema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -27,21 +31,36 @@ const submissionSchema = z.object({
   message: z.string().trim().min(20).max(1000),
 })
 
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err)
+})
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UNHANDLED REJECTION:', reason)
+})
+
+// CORS middleware removed temporarily for debugging. Origin header should no longer cause 500.
+// app.use(
+//   cors({
+//     origin: true,
+//     optionsSuccessStatus: 200,
+//   }),
+// )
 app.use(
   cors({
-    origin(origin, callback) {
-      const isLocalVite = typeof origin === 'string' && /^http:\/\/localhost:517\d$/.test(origin)
-
-      if (!origin || allowedOrigins.has(origin) || isLocalVite) {
-        callback(null, true)
-        return
-      }
-
-      callback(new Error('Origin not allowed by CORS'))
-    },
+    origin: true,
+    optionsSuccessStatus: 200,
   }),
 )
 app.use(express.json())
+
+app.use((err, req, res, next) => {
+  console.error('Express error handler:', err)
+  if (res.headersSent) {
+    return next(err)
+  }
+  res.status(500).json({ error: 'Internal Server Error' })
+})
 
 app.get('/', (_request, response) => {
   response.json({
@@ -198,6 +217,8 @@ app.post('/api/contact', async (request, response) => {
   }
 })
 
-app.listen(port, () => {
-  console.log(`Backend running at http://localhost:${port}`)
+const host = process.env.HOST || '0.0.0.0'
+
+app.listen(port, host, () => {
+  console.log(`Backend running at http://${host}:${port}`)
 })
