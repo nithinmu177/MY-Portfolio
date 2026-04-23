@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import profilePhoto from './assets/profile-photo.jpg'
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim() || (import.meta.env.DEV ? 'http://localhost:3001' : '')
 
 const profile = {
   name: 'Nithin M.U',
   initials: 'NM',
-  title: 'Aspiring software developer building responsive web experiences with React.',
+  title: 'Full Stack Developer | Front-End Developer | UI/UX Enthusiast | BCA Student',
+  tagline:
+    'Crafting modern, responsive web experiences with clean code, bold design, and pixel-perfect attention to detail.',
+  status: 'Available for opportunities',
   location: 'India',
   email: 'munithin177@gmail.com',
   phone: '+91 9035886249',
@@ -25,6 +28,7 @@ const profile = {
     'HTML5',
     'CSS3',
     'Responsive Design',
+    'Full Stack Development',
     'Git & GitHub',
     'Java',
     'Python',
@@ -90,8 +94,35 @@ function App() {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [toast, setToast] = useState('')
+  const [backendStatus, setBackendStatus] = useState('checking')
 
   const currentYear = new Date().getFullYear()
+  const nameParts = profile.name.split(' ')
+  const highlightedName = (
+    <>
+      {nameParts.slice(0, -1).join(' ')} <span className="hero-name-accent">{nameParts[nameParts.length - 1]}</span>
+    </>
+  )
+
+  useEffect(() => {
+    const healthUrl = `${apiBaseUrl}/api/health`
+
+    const checkBackend = async () => {
+      try {
+        const response = await fetch(healthUrl)
+        const payload = await response.json()
+
+        setBackendStatus(payload?.ok ? 'online' : 'unavailable')
+      } catch {
+        setBackendStatus('offline')
+      }
+    }
+
+    checkBackend()
+    const interval = setInterval(checkBackend, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -146,7 +177,8 @@ function App() {
       )
       setForm(initialForm)
     } catch (error) {
-      setToast(error instanceof Error ? error.message : 'Something went wrong while sending your message.')
+      const message = error instanceof Error ? error.message : 'Something went wrong while sending your message.'
+      setToast(`Unable to send message. ${message}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -171,10 +203,11 @@ function App() {
       <main>
         <section className="hero-section" id="home">
           <div className="hero-copy">
+            <p className="status-badge">{profile.status}</p>
             <p className="eyebrow">Portfolio</p>
-            <h1>{profile.name}</h1>
+            <h1>{highlightedName}</h1>
             <p className="hero-title">{profile.title}</p>
-            <p className="hero-summary">{profile.summary}</p>
+            <p className="hero-summary">{profile.tagline}</p>
 
             <div className="hero-actions">
               <a className="button button-primary" href="#contact">
@@ -277,6 +310,9 @@ function App() {
 
           <div className="contact-grid">
             <div className="contact-copy">
+              <div className={`backend-status backend-status--${backendStatus}`}>
+                Backend: {backendStatus === 'online' ? 'Connected' : backendStatus === 'checking' ? 'Checking...' : backendStatus === 'offline' ? 'Offline' : 'Unavailable'}
+              </div>
               <p>
                 If you&apos;re looking for someone who cares about clean UI, thoughtful implementation, and steady
                 learning, I&apos;d love to connect.
@@ -290,13 +326,21 @@ function App() {
             <form className="contact-form" onSubmit={handleSubmit} noValidate>
               <label>
                 Name
-                <input name="name" type="text" value={form.name} onChange={handleChange} placeholder="Your name" />
+                <input
+                  className={errors.name ? 'input-error' : ''}
+                  name="name"
+                  type="text"
+                  value={form.name}
+                  onChange={handleChange}
+                  placeholder="Your name"
+                />
                 {errors.name ? <span className="field-error">{errors.name}</span> : null}
               </label>
 
               <label>
                 Email
                 <input
+                  className={errors.email ? 'input-error' : ''}
                   name="email"
                   type="email"
                   value={form.email}
@@ -309,6 +353,7 @@ function App() {
               <label>
                 Message
                 <textarea
+                  className={errors.message ? 'input-error' : ''}
                   name="message"
                   rows="6"
                   value={form.message}

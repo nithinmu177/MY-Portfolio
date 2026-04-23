@@ -37,4 +37,8 @@ Start the Express server:
 npm start
 ```
 
-The Express server will serve the built frontend from `dist/` when it exists.
+The Express server in `../backend` will serve the built frontend from `dist/` when it exists.
+
+If the frontend and backend are deployed together, leave `VITE_API_BASE_URL` empty so requests use the same domain.
+
+For GitHub Pages, set `VITE_API_BASE_URL` to your deployed backend URL and use the workflow in `../.github/workflows/deploy-pages.yml`.
